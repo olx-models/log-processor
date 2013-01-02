@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for f in logs/*
+do
+    web=`basename $f | cut -f1 -d'-'`
+    echo "Procesando $web"
+    zcat $f | grep -e '-iid-' | grep 'GET' | grep -v 'GET /ajax/' | grep -v '+d+'> items/$web.log
+done
