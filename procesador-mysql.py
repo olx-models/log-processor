@@ -15,7 +15,13 @@ DBSETTINGS = {
 LOGDIR = 'logs'
 
 def get_db_conn(dbsettings):
-    # create table itempageviews (fecha DATETIME, domain VARCHAR(128), url VARCHAR(512));
+    # create table itempageviews (
+    #   fecha DATETIME,
+    #   host VARCHAR(16),
+    #   domain VARCHAR(128),
+    #   id INT(11),
+    #   url VARCHAR(512)
+    # );
     conn = mysql.connect(**dbsettings)
     return conn
 
