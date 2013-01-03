@@ -1,22 +1,22 @@
 #!/usr/bin/python
 
+
 import os
 import re
-import sqlite3 as dbapi
+import MySQLdb as mysql
 from datetime import datetime
 
 
-DBFILE = 'items_soa.db'
+DBSETTINGS = {
+        'host': 'dev-models.olx.com.ar',
+        'user': 'root',
+        'db':   'items_soa',
+        }
 LOGDIR = 'logs'
 
-def get_db_conn(dbname):
-    conn = dbapi.connect(dbname)
-    try:
-        cur = conn.cursor()
-        cur.execute('SELECT COUNT(*) FROM itempageviews')
-    except dbapi.OperationalError:
-        cur.execute('CREATE TABLE itempageviews (fecha text(100), domain text(100), url text(100))')
-    cur.close()
+def get_db_conn(dbsettings):
+    # create table itempageviews (fecha DATETIME, domain VARCHAR(128), url VARCHAR(512));
+    conn = mysql.connect(**dbsettings)
     return conn
 
 
@@ -29,45 +29,48 @@ def get_file_list(dirname):
 
 
 def main(flist, conn):
-    sql = "INSERT INTO itempageviews VALUES ('%s', '%s', '%s');"
+    sql = "INSERT INTO itempageviews VALUES (%s, %s, %s, %s, %s);"
     cur = conn.cursor()
-    with open('error.sql', 'w') as err:
+    with open('errors.log', 'w') as err:
         for fname in flist:
             print 'Procesando %s' % fname
             with open(fname, 'r') as f:
                 for l in f:
                     fields = l.split(' ')
                     if len(fields) < 7:
-                        err.write('[%s] Line too short: %s\n' % (fname, l))
+                        err.write('[%s] Line too short: %s' % (fname, l))
                         continue
 
                     url = fields[6].strip('"')
-                    if not re.search(r'iid-\d+', url):
-                        err.write('[%s] URL not valid: %s\n' % (fname, l))
+                    re_result = re.search(r'iid-\d+', url)
+                    if not re_result:
+                        err.write('[%s] URL not valid: %s' % (fname, l))
                         continue
 
                     raw_date = fields[3].strip('[')
                     try:
                         date = datetime.strptime(raw_date, '%d/%b/%Y:%H:%M:%S')
                     except:
-                        err.write('[%s] Datetime not valid: %s\n' % (fname, l))
+                        err.write('[%s] Datetime not valid: %s' % (fname, l))
                         continue
 
+                    host = fname[5:10]
                     domain = fields[1]
-                    args = (date.strftime('%Y-%m-%d %H:%M:%S'), domain, url)
+                    id = re_result.group()[4:]
+                    args = (date, host, domain, id, url)
                     try:
-                        cur.execute(sql % args)
+                        cur.execute(sql, args)
                     except Exception as e:
-                        print str(e), ':', sql % args
                         query = sql % args
-                        err.write('[%s] Query error: %s\n' % (fname, query))
-                conn.commit()
+                        err.write('[%s] %s %s\n' % (fname, e, query))
+
+                    conn.commit()
+
     cur.close()
 
 
 if __name__ == '__main__':
     flist = get_file_list(LOGDIR)
-    #flist = ['logs/web15.log',]
-    conn = get_db_conn(DBFILE)
+    conn = get_db_conn(DBSETTINGS)
     main(flist, conn)
     conn.close()

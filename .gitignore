@@ -33,3 +33,9 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+env
+logs
+items_soa.db
+errors.log
+hits_per_minute_mysql.csv
